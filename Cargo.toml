@@ -2,5 +2,7 @@
 name = "generator_ext"
 version = "0.1.0"
 authors = ["DutchGhost <kasper199914@gmail.com>"]
+description = "Crate for working with generators, and converting them into different kinds of Iterators"
+licence = "MIT"
 
 [dependencies]
