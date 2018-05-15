@@ -73,7 +73,7 @@ pub trait Gen: GenOnce {
 }
 
 /// A safe wrapper around a Generator.
-/// Once the Generator is returned, the Option is taken, and set to None.
+/// Once the Generator is returned, it's guaranteed that resume() is never called again on the Generator.
 pub struct Callable<G>(Option<G>);
 
 impl<G> Callable<G> {
