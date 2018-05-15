@@ -12,7 +12,7 @@ mod tests {
     //         });
 
     //         return 99
-    //     }).iter_with_return();
+    //     }).iter_all();
 
     //     assert_eq!(g.next(), Some(0 as char));
     //     assert_eq!(g.next(), Some(1 as char));
@@ -35,8 +35,9 @@ mod tests {
 
             return 99
         });
+        
         {
-            let mut g = (&mut callable).iter_with_return().take(4);
+            let mut g = (&mut callable).iter_all().take(4);
             assert_eq!(g.next(), Some(0 as char));
             assert_eq!(g.next(), Some(1 as char));
             assert_eq!(g.next(), Some(2 as char));
@@ -44,7 +45,7 @@ mod tests {
             assert_eq!(g.next(), None);
         }
 
-        let mut resumed = callable.iter_with_return();
+        let mut resumed = callable.iter_all();
         assert_eq!(resumed.next(), Some(4 as char));
         assert_eq!(resumed.next(), Some('c'));
         assert_eq!(resumed.next(), None);

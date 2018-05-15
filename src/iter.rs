@@ -6,13 +6,13 @@ pub trait YieldIterExt: Gen {
     type Iter: Iterator;
 
     /// Returns the Iterator
-    fn iter_yield_only(self) -> Self::Iter;
+    fn iter_yielded(self) -> Self::Iter;
 }
 
 impl <G> YieldIterExt for G where G: Gen {
     type Iter = YieldIterator<Self>;
 
-    fn iter_yield_only(self) -> Self::Iter {
+    fn iter_yielded(self) -> Self::Iter {
         YieldIterator(self)
     }
 }
@@ -42,7 +42,7 @@ where
 {
     type Iter: Iterator;
 
-    fn iter_with_return(self) -> Self::Iter;
+    fn iter_all(self) -> Self::Iter;
 }
 
 impl <Y, R, G> ReturnIterExt<Y, R> for G
@@ -52,7 +52,7 @@ where
 {
     type Iter = ReturnIterator<Self>;
 
-    fn iter_with_return(self) -> Self::Iter {
+    fn iter_all(self) -> Self::Iter {
         ReturnIterator(self)
     }
 }
