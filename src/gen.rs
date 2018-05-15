@@ -17,7 +17,7 @@ macro_rules! return_from_yield {
 }
 
 /// This macro is used for the implementation of the `Gen` trait.
-/// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), yielded item if the Generator yielded.
+/// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), with the yielded value if the Generator yielded.
 /// On return, you can bind the value to a value, like ```let ret = return_yielded!(generator)```.
 #[macro_export]
 macro_rules! return_yielded {
@@ -52,7 +52,7 @@ impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
 
 pub type ResumeOnce<R> = Option<State<(), R>>;
 
-/// Returns the Yield with a Unit  type of [State](gen/enum.State.html) to indicate the Generator has yielded.
+/// Returns the Yield variant with a Unit type of [State](gen/enum.State.html) to indicate the Generator has yielded.
 /// Only returns a Return<R> if the Generator has returned.
 /// Any further calls to resume should return None.
 pub trait GenOnce {

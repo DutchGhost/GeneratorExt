@@ -1,7 +1,7 @@
 use gen::{State, Gen};
 
 /// This trait converts any type implementing Gen to an Iterator.
-/// The Iterator should only return the Yield variants of [State](gen/enum.State.html), and ignore the Return variant.
+/// The Iterator should only return the Yield variants of [State](../gen/enum.State.html), and ignore the Return variant.
 pub trait YieldIterExt: Gen {
     type Iter: Iterator;
 
@@ -33,7 +33,7 @@ where
     }
 }
 
-/// This traits converts any type Implementing Gen<Yield = T, Return = T> into an Iterator.
+/// This traits converts any type Implementing Gen<Yield = T, Return = R> into an Iterator, where R: Into<T>.
 /// This Iterator also returns the returned item from Gen.
 /// This is only possible if the Yield type and Return type are the same, or when the Return type can be transformed into the Yield type.
 pub trait ReturnIterExt<Y, R>: Gen<Yield = Y, Return = R>
