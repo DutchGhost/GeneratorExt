@@ -1,6 +1,21 @@
 use std::ops::Generator;
 use std::ops::GeneratorState;
 
+#[macro_export]
+macro_rules! yield_from {
+
+    ($g:expr) => (
+        unsafe {
+            loop {
+                match $g.resume() {
+                     GeneratorState::Yielded(y) => yield y,
+                    GeneratorState::Complete(ret) => break ret,
+                }
+            }
+        }
+    );
+}
+
 /// This macro is used for the implementation of the `GenOnce` trait.
 /// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), containing the Unit type if the Generator yielded.
 /// On return, you can bind the value to a value, like ```let ret = return_from_yield!(generator)```.
@@ -81,6 +96,55 @@ impl<G> Callable<G> {
     #[inline]
     pub fn new(g: G) -> Self {
         Callable(Some(g))
+    }
+
+    /// Composes a new Callable. this function takes a closure that takes the return value of the underlying Generator and returns a new Generator,
+    /// This function consumes the underlying generator of `self`, calls the function with the returned item, and returns a new callable containing the new
+    /// generator.
+    pub fn compose<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
+    where
+        G: Generator,
+        O: Generator<Yield = G::Yield, Return = G::Return>,
+    {
+        let mut generator = self.into_inner()?;
+        
+        Some(Callable::new(move || {
+            let ret = yield_from!(generator);
+
+            let mut provided_gen = g(ret);
+
+            return yield_from!(provided_gen)
+        }))
+    }
+
+    // pub fn chain<Y, R, O>(mut self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return >>>
+    // where
+    //     G: Generator,
+    //     O: Generator,
+    // {
+    //     let ret = loop {
+    //         match self.resume_with_yield() {
+    //             Some(State::Yield(_)) => continue,
+    //             Some(State::Return(ret)) => break ret,
+    //             None => return None,
+    //         };
+    //     };
+
+    //     Some(Callable::new(move || {
+
+    //         let mut provided_gen = g(ret);
+
+    //         return yield_from!(provided_gen)
+    //     }))
+    // }
+
+    #[inline]
+    pub fn into_inner(self) -> Option<G> {
+        self.0
+    }
+
+    pub fn take(&mut self) -> Option<G> {
+        self.0.take()   
     }
 }
 
