@@ -1,21 +1,6 @@
 use std::ops::Generator;
 use std::ops::GeneratorState;
 
-#[macro_export]
-macro_rules! yield_from {
-
-    ($g:expr) => (
-        unsafe {
-            loop {
-                match $g.resume() {
-                     GeneratorState::Yielded(y) => yield y,
-                    GeneratorState::Complete(ret) => break ret,
-                }
-            }
-        }
-    );
-}
-
 /// This macro is used for the implementation of the `GenOnce` trait.
 /// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), containing the Unit type if the Generator yielded.
 /// On return, you can bind the value to a value, like ```let ret = return_from_yield!(generator)```.
@@ -67,9 +52,9 @@ impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
 
 pub type ResumeOnce<R> = Option<State<(), R>>;
 
-/// Returns the Yield variant with a Unit type of [State](gen/enum.State.html) to indicate the Generator has yielded.
+/// Returns the Yield variant of [State](gen/enum.State.html) containing a `()`, to indicate the Generator has yielded.
 /// Only returns a Return<R> if the Generator has returned.
-/// Any further calls to resume should return None.
+/// Any further calls to [`resume`](trait.GenOnce.html#method.resume) should return None.
 pub trait GenOnce {
     type Return;
     
@@ -78,9 +63,9 @@ pub trait GenOnce {
 
 pub type Resume<Y, R> = Option<State<Y, R>>;
 
-/// Returns the Yield variant of [State](gen/enum.State.html) when the Generator yields with the yielded item,
+/// Returns the Yield variant of [State](gen/enum.State.html) with the yielded items of the Generator,
 /// and the Return variant of [State](gen/enum.State.html) when the Generator returns, with the returned item.
-/// Any further calls to resume_with_yield should return None.
+/// Any further calls to [`resume_with_yield`](trait.Gen.html#method.resume_with_yield) should return None.
 pub trait Gen: GenOnce {
     type Yield;
     
@@ -88,7 +73,7 @@ pub trait Gen: GenOnce {
 }
 
 /// A safe wrapper around a Generator.
-/// Once the Generator is returned, it's guaranteed that resume() is never called again on the Generator.
+/// Once the Generator is returned, it's guaranteed that [`resume`](https://doc.rust-lang.org/1.23.0/std/ops/trait.Generator.html#tymethod.resume) is never called again on the Generator.
 pub struct Callable<G>(Option<G>);
 
 impl<G> Callable<G> {
@@ -99,8 +84,8 @@ impl<G> Callable<G> {
     }
 
     /// Composes a new Callable. this function takes a closure that takes the return value of the underlying Generator and returns a new Generator,
-    /// This function consumes the underlying generator of `self`, calls the function with the returned item, and returns a new callable containing the new
-    /// generator.
+    /// The newly created Callable has a generator under the hood that first yields all the items of the old generator, once that returns it passes the returned value into the closure,
+    /// so a new generator is pulled out of the closure, and that generator will resume from there on.
     pub fn compose<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
     where
         G: Generator,
