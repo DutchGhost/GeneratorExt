@@ -3,9 +3,11 @@ use gen::{State, Gen};
 /// This trait converts any type implementing Gen to an Iterator.
 /// The Iterator should only return the Yield variants of [State](../gen/enum.State.html), and ignore the Return variant.
 pub trait YieldIterExt: Gen {
+    /// The Iterator returned.
     type Iter: Iterator;
 
-    /// Returns the Iterator
+    /// Returns the Iterator.
+    /// The Iterator should only return the Yielded items from the underlying Generator
     fn iter_yielded(self) -> Self::Iter;
 }
 
@@ -40,8 +42,11 @@ pub trait ReturnIterExt<Y, R>: Gen<Yield = Y, Return = R>
 where
     R: Into<Y>
 {
+    /// The Iterator returned.
     type Iter: Iterator;
 
+    /// Returns the Iterator.
+    /// The Iterator should return both the yielded items, as well as the returned item from the underlying Generator.
     fn iter_all(self) -> Self::Iter;
 }
 

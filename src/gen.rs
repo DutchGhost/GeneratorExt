@@ -86,6 +86,7 @@ impl<G> Callable<G> {
     /// chains a new Callable. this function takes a closure that takes the return value of the underlying Generator and returns a new Generator,
     /// The newly created Callable has a generator under the hood that first yields all the items of the old generator, once that returns it passes the returned value into the closure,
     /// so a new generator is pulled out of the closure, and that generator will resume from there on.
+    /// Returns None if the underlying Generator already has been exhausted.
     pub fn chain<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
     where
         G: Generator,
@@ -102,6 +103,9 @@ impl<G> Callable<G> {
         }))
     }
 
+    /// Takes out the underlying Generator, and calls the closure with it. The closure should return a new Generator.
+    /// Returns None if the underlying Generator already has been exhausted.
+    #[inline]
     pub fn move_into<O>(self, func: impl FnOnce(G) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
@@ -111,6 +115,9 @@ impl<G> Callable<G> {
         Some(Callable::new(func(generator)))
     }
 
+    /// Calls the closure with self. Because `Self` can be turned into an Iterator, it makes iterating over the underlying Generator of self easy to do in the new generator.
+    /// Returns None if the underlying Generator already has been exhausted
+    #[inline]
     pub fn make_new<O>(self, func: impl FnOnce(Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
@@ -122,6 +129,9 @@ impl<G> Callable<G> {
         None
     }
 
+    /// Calls the closure, borrowing `Self`. This still allows Iteration inside of the new Generator, except that `Self` is not moved into the closure.
+    /// Returns None if the underlying Generator already has been exhausted
+    #[inline]
     pub fn borrow_mut<'a, 's: 'a, O>(&'s mut self, func: impl FnOnce(&'a mut Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
@@ -133,13 +143,25 @@ impl<G> Callable<G> {
         None
     }
 
+    /// Takes the underlying Generator out of self, consuming self.
+    /// Returns None if the underlying Generator already has been exhausted
     #[inline]
     pub fn into_inner(self) -> Option<G> {
         self.0
     }
 
+    /// Takes out the underlying Generator, replacing it with None.
+    /// This does not consume `Self`.
+    /// Returns None if the underlying Generator already has been exhausted
+    #[inline]
     pub fn take(&mut self) -> Option<G> {
         self.0.take()   
+    }
+
+    /// Returns a mutable reference to the underlying Generator.
+    #[inline]
+    pub fn as_mut(&mut self) -> Option<&mut G> {
+        self.0.as_mut()
     }
 }
 
@@ -151,9 +173,8 @@ where
     
     #[inline]
     fn resume(&mut self) -> ResumeOnce<Self::Return> {
-        let r = return_from_yield!(self.0.as_mut()?);
-        
-        self.0.take();
+        let r = return_from_yield!(self.as_mut()?);
+        self.take();
         return Some(State::Return(r));
     }
 }
@@ -178,8 +199,8 @@ where
     
     #[inline]
     fn resume_with_yield(&mut self) -> Resume<Self::Yield, Self::Return> {
-        let r = return_yielded!(self.0.as_mut()?);
-        self.0.take();
+        let r = return_yielded!(self.as_mut()?);
+        self.take();
         return Some(State::Return(r));
     }
 }
