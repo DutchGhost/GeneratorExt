@@ -83,10 +83,10 @@ impl<G> Callable<G> {
         Callable(Some(g))
     }
 
-    /// Composes a new Callable. this function takes a closure that takes the return value of the underlying Generator and returns a new Generator,
+    /// chains a new Callable. this function takes a closure that takes the return value of the underlying Generator and returns a new Generator,
     /// The newly created Callable has a generator under the hood that first yields all the items of the old generator, once that returns it passes the returned value into the closure,
     /// so a new generator is pulled out of the closure, and that generator will resume from there on.
-    pub fn compose<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
+    pub fn chain<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
     where
         G: Generator,
         O: Generator<Yield = G::Yield, Return = G::Return>,
@@ -102,26 +102,36 @@ impl<G> Callable<G> {
         }))
     }
 
-    // pub fn chain<Y, R, O>(mut self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return >>>
-    // where
-    //     G: Generator,
-    //     O: Generator,
-    // {
-    //     let ret = loop {
-    //         match self.resume_with_yield() {
-    //             Some(State::Yield(_)) => continue,
-    //             Some(State::Return(ret)) => break ret,
-    //             None => return None,
-    //         };
-    //     };
+    pub fn move_into<O>(self, func: impl FnOnce(G) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    where
+        G: Generator,
+        O: Generator,
+    {
+        let generator = self.into_inner()?;
+        Some(Callable::new(func(generator)))
+    }
 
-    //     Some(Callable::new(move || {
+    pub fn make_new<O>(self, func: impl FnOnce(Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    where
+        G: Generator,
+        O: Generator
+    {
+        if self.0.is_some() {
+            return Some(Callable::new(func(self)))
+        }
+        None
+    }
 
-    //         let mut provided_gen = g(ret);
-
-    //         return yield_from!(provided_gen)
-    //     }))
-    // }
+    pub fn borrow_mut<'a, 's: 'a, O>(&'s mut self, func: impl FnOnce(&'a mut Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    where
+        G: Generator,
+        O: Generator
+    {
+        if self.0.is_some() {
+            return Some(Callable::new(func(self)))
+        }
+        None
+    }
 
     #[inline]
     pub fn into_inner(self) -> Option<G> {
