@@ -1,8 +1,8 @@
-use gen::{State, Gen};
+use gen::{State, Senerator};
 
 /// This trait converts any type implementing Gen to an Iterator.
 /// The Iterator should only return the Yield variants of [State](../gen/enum.State.html), and ignore the Return variant.
-pub trait YieldIterExt: Gen {
+pub trait YieldIterExt: Senerator {
     /// The Iterator returned.
     type Iter: Iterator;
 
@@ -11,7 +11,7 @@ pub trait YieldIterExt: Gen {
     fn iter_yielded(self) -> Self::Iter;
 }
 
-impl <G> YieldIterExt for G where G: Gen {
+impl <G> YieldIterExt for G where G: Senerator {
     type Iter = YieldIterator<Self>;
 
     fn iter_yielded(self) -> Self::Iter {
@@ -23,7 +23,7 @@ pub struct YieldIterator<G>(G);
 
 impl <G> Iterator for YieldIterator<G>
 where
-    G: Gen
+    G: Senerator
 {
     type Item = G::Yield;
 
@@ -38,7 +38,7 @@ where
 /// This traits converts any type Implementing Gen<Yield = T, Return = R> into an Iterator, where R: Into<T>.
 /// This Iterator also returns the returned item from Gen.
 /// This is only possible if the Yield type and Return type are the same, or when the Return type can be transformed into the Yield type.
-pub trait ReturnIterExt<Y, R>: Gen<Yield = Y, Return = R>
+pub trait ReturnIterExt<Y, R>: Senerator<Yield = Y, Return = R>
 where
     R: Into<Y>
 {
@@ -52,7 +52,7 @@ where
 
 impl <Y, R, G> ReturnIterExt<Y, R> for G
 where
-    G: Gen<Yield = Y, Return = R>,
+    G: Senerator<Yield = Y, Return = R>,
     R: Into<Y>
 {
     type Iter = ReturnIterator<Self>;
@@ -66,7 +66,7 @@ pub struct ReturnIterator<G>(G);
 
 impl <Y, R, G> Iterator for ReturnIterator<G>
 where
-    G: Gen<Yield = Y, Return = R>,
+    G: Senerator<Yield = Y, Return = R>,
     R: Into<Y>
 {
     type Item = Y;

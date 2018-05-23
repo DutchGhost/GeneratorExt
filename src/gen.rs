@@ -1,7 +1,7 @@
 use std::ops::Generator;
 use std::ops::GeneratorState;
 
-/// This macro is used for the implementation of the `GenOnce` trait.
+/// This macro is used for the implementation of the `Futerator` trait.
 /// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), containing the Unit type if the Generator yielded.
 /// On return, you can bind the value to a value, like ```let ret = return_from_yield!(generator)```.
 #[macro_export]
@@ -16,7 +16,7 @@ macro_rules! return_from_yield {
     }
 }
 
-/// This macro is used for the implementation of the `Gen` trait.
+/// This macro is used for the implementation of the `Senerator` trait.
 /// It advances a Generator, but returning the Yield variant of [State](gen/enum.State.html), with the yielded value if the Generator yielded.
 /// On return, you can bind the value to a value, like ```let ret = return_yielded!(generator)```.
 #[macro_export]
@@ -40,7 +40,7 @@ pub enum State<Y, R> {
 }
 
 impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
-    
+
     #[inline]
     fn into(self) -> Option<Y> {
         match self {
@@ -50,26 +50,30 @@ impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
     }
 }
 
-pub type ResumeOnce<R> = Option<State<(), R>>;
+/// Future Generator type.
+pub type Futor<R> = Option<State<(), R>>;
 
+/// A `Future` generator. Resolves to 1 final value, but can be 'called' multiple times to advance the underlying Generator.
 /// Returns the Yield variant of [State](gen/enum.State.html) containing a `()`, to indicate the Generator has yielded.
 /// Only returns a Return<R> if the Generator has returned.
-/// Any further calls to [`resume`](trait.GenOnce.html#method.resume) should return None.
-pub trait GenOnce {
+/// Any further calls to [`resume`](trait.Futerator.html#method.resume) should return None.
+pub trait Futerator {
     type Return;
-    
-    fn resume(&mut self) -> ResumeOnce<Self::Return>;
+
+    fn resume(&mut self) -> Futor<Self::Return>;
 }
 
-pub type Resume<Y, R> = Option<State<Y, R>>;
+/// Streaming Generator type.
+pub type Senor<Y, R> = Option<State<Y, R>>;
 
+/// A `Stream` generator. On each call, the generator advances, and is supposed to yield a usable item.
 /// Returns the Yield variant of [State](gen/enum.State.html) with the yielded items of the Generator,
 /// and the Return variant of [State](gen/enum.State.html) when the Generator returns, with the returned item.
-/// Any further calls to [`resume_with_yield`](trait.Gen.html#method.resume_with_yield) should return None.
-pub trait Gen: GenOnce {
+/// Any further calls to [`resume_with_yield`](trait.Senerator.html#method.resume_with_yield) should return None.
+pub trait Senerator: Futerator {
     type Yield;
-    
-    fn resume_with_yield(&mut self) -> Resume<Self::Yield, Self::Return>;
+
+    fn resume_with_yield(&mut self) -> Senor<Self::Yield, Self::Return>;
 }
 
 /// A safe wrapper around a Generator.
@@ -77,7 +81,7 @@ pub trait Gen: GenOnce {
 pub struct Callable<G>(Option<G>);
 
 impl<G> Callable<G> {
-    
+
     #[inline]
     pub fn new(g: G) -> Self {
         Callable(Some(g))
@@ -93,7 +97,7 @@ impl<G> Callable<G> {
         O: Generator<Yield = G::Yield, Return = G::Return>,
     {
         let mut generator = self.into_inner()?;
-        
+
         Some(Callable::new(move || {
             let ret = yield_from!(generator);
 
@@ -155,7 +159,7 @@ impl<G> Callable<G> {
     /// Returns None if the underlying Generator already has been exhausted
     #[inline]
     pub fn take(&mut self) -> Option<G> {
-        self.0.take()   
+        self.0.take()
     }
 
     /// Returns a mutable reference to the underlying Generator.
@@ -165,54 +169,94 @@ impl<G> Callable<G> {
     }
 }
 
-impl <G> GenOnce for Callable<G>
+impl <G> Futerator for Callable<G>
 where
     G: Generator
 {
     type Return = G::Return;
-    
+
     #[inline]
-    fn resume(&mut self) -> ResumeOnce<Self::Return> {
+    fn resume(&mut self) -> Futor<Self::Return> {
         let r = return_from_yield!(self.as_mut()?);
         self.take();
         return Some(State::Return(r));
     }
 }
 
-impl <'a, G> GenOnce for &'a mut G
+impl <'a, G> Futerator for &'a mut G
 where
-    G: GenOnce
+    G: Futerator
 {
     type Return = G::Return;
 
     #[inline]
-    fn resume(&mut self) -> ResumeOnce<Self::Return> {
+    fn resume(&mut self) -> Futor<Self::Return> {
         (*self).resume()
     }
 }
 
-impl <G> Gen for Callable<G>
+impl <G> Senerator for Callable<G>
 where
     G: Generator
 {
     type Yield = G::Yield;
-    
+
     #[inline]
-    fn resume_with_yield(&mut self) -> Resume<Self::Yield, Self::Return> {
+    fn resume_with_yield(&mut self) -> Senor<Self::Yield, Self::Return> {
         let r = return_yielded!(self.as_mut()?);
         self.take();
         return Some(State::Return(r));
     }
 }
 
-impl <'a, G> Gen for &'a mut G
+impl <'a, G> Senerator for &'a mut G
 where
-    G: Gen
+    G: Senerator
 {
     type Yield = G::Yield;
 
     #[inline]
-    fn resume_with_yield(&mut self) -> Resume<Self::Yield, Self::Return> {
+    fn resume_with_yield(&mut self) -> Senor<Self::Yield, Self::Return> {
         (*self).resume_with_yield()
     }
+}
+
+#[cfg(feature = "extfutures")]
+pub mod ImplFutures {
+
+    extern crate futures;
+
+    use self::futures::{Future, Stream};
+    use self::futures::task::Context;
+    use self::futures::{Async, Poll};
+
+    use super::{Callable, Futerator, Senerator, State};
+    use std::ops::Generator;
+    
+    impl <G: Generator> Future for Callable<G> {
+        type Item = G::Return;
+        type Error = ();
+
+        fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
+            match self.resume() {
+                Some(State::Yield(_)) => Ok(Async::Pending),
+                Some(State::Return(r)) => Ok(Async::Ready(r)),
+                None => Err(())
+            }
+        }
+    }
+
+    impl <G: Generator>Stream for Callable<G> {
+        type Item = G::Return;
+        type Error = ();
+
+        fn poll_next(&mut self, cx: &mut Context) -> Poll<Option<Self::Item>, Self::Error> {
+            match self.resume_with_yield() {
+                Some(State::Yield(_)) => Ok(Async::Pending),
+                Some(State::Return(r)) => Ok(Async::Ready(Some(r))),
+                None => Ok(Async::Ready(None)),
+            }
+        }
+    }
+
 }

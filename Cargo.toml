@@ -6,3 +6,7 @@ description = "Crate for working with generators, and converting them into diffe
 license = "MIT"
 
 [dependencies]
+futures={version = "*", optional = true}
+
+[features]
+extfutures=["futures"]
