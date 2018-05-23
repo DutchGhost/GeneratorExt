@@ -222,7 +222,7 @@ where
 }
 
 #[cfg(feature = "extfutures")]
-pub mod ImplFutures {
+pub mod ext_futures {
 
     extern crate futures;
 
@@ -232,12 +232,12 @@ pub mod ImplFutures {
 
     use super::{Callable, Futerator, Senerator, State};
     use std::ops::Generator;
-    
+
     impl <G: Generator> Future for Callable<G> {
         type Item = G::Return;
         type Error = ();
 
-        fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
+        fn poll(&mut self, _cx: &mut Context) -> Poll<Self::Item, Self::Error> {
             match self.resume() {
                 Some(State::Yield(_)) => Ok(Async::Pending),
                 Some(State::Return(r)) => Ok(Async::Ready(r)),
@@ -247,13 +247,13 @@ pub mod ImplFutures {
     }
 
     impl <G: Generator>Stream for Callable<G> {
-        type Item = G::Return;
+        type Item = G::Yield;
         type Error = ();
 
-        fn poll_next(&mut self, cx: &mut Context) -> Poll<Option<Self::Item>, Self::Error> {
+        fn poll_next(&mut self, _cx: &mut Context) -> Poll<Option<Self::Item>, Self::Error> {
             match self.resume_with_yield() {
-                Some(State::Yield(_)) => Ok(Async::Pending),
-                Some(State::Return(r)) => Ok(Async::Ready(Some(r))),
+                Some(State::Yield(y)) => Ok(Async::Ready(Some(y))),
+                Some(State::Return(_)) => Ok(Async::Ready(None)),
                 None => Ok(Async::Ready(None)),
             }
         }
