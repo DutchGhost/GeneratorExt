@@ -54,7 +54,7 @@ impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
 pub type Futor<R> = Option<State<(), R>>;
 
 /// A `Future` generator. Resolves to 1 final value, but can be 'called' multiple times to advance the underlying Generator.
-/// Returns the Yield variant of [State](gen/enum.State.html) containing a `()`, to indicate the Generator has yielded.
+/// Returns the Yield variant of [State](enum.State.html) containing a `()`, to indicate the Generator has yielded.
 /// Only returns a Return<R> if the Generator has returned.
 /// Any further calls to [`resume`](trait.Futerator.html#method.resume) should return None.
 pub trait Futerator {
@@ -67,8 +67,8 @@ pub trait Futerator {
 pub type Senor<Y, R> = Option<State<Y, R>>;
 
 /// A `Stream` generator. On each call, the generator advances, and is supposed to yield a usable item.
-/// Returns the Yield variant of [State](gen/enum.State.html) with the yielded items of the Generator,
-/// and the Return variant of [State](gen/enum.State.html) when the Generator returns, with the returned item.
+/// Returns the Yield variant of [State](enum.State.html) with the yielded items of the Generator,
+/// and the Return variant of [State](enum.State.html) when the Generator returns, with the returned item.
 /// Any further calls to [`resume_with_yield`](trait.Senerator.html#method.resume_with_yield) should return None.
 pub trait Senerator: Futerator {
     type Yield;
@@ -258,5 +258,4 @@ pub mod ext_futures {
             }
         }
     }
-
 }

@@ -1,4 +1,5 @@
 
+//#![feature(extern_prelude)]
 #![feature(generator_trait, generators)]
 //! This crate is build for easy convertion from generators to iterators,
 //! and for `chaining` generators in different kinds of ways.
@@ -19,6 +20,8 @@ macro_rules! yield_from {
     );
 }
 
+#[cfg(feature = "futuresext")]
+extern crate futures;
 
 pub mod gen;
 pub mod iter;
