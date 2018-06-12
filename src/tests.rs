@@ -1,8 +1,8 @@
 mod tests {
     use gen::Callable;
     use iter::ReturnIterExt;
-    use ::std::ops::{GeneratorState, Generator};
-  
+    use std::ops::{Generator, GeneratorState};
+
     // #[test]
     // fn __test_generator_into_iterator() {
     //     let mut g = Callable::new(|| {
@@ -34,7 +34,7 @@ mod tests {
         let mut callable = Callable::new(|| {
             yield_from!(char_yielder);
 
-            return 99
+            return 99;
         });
 
         {
@@ -60,20 +60,24 @@ mod tests {
             return 3;
         });
 
-        let chain_once = generator.chain(|input| {
-            move || {
-                yield input * 2;
-                return input;
-            }
-        }).unwrap();
-        
-        let chain_twice = chain_once.chain(|mut input| {
-            move || {
-                yield input * 10;
-                input *= 10;
-                input - 1
-            }
-        }).unwrap();
+        let chain_once = generator
+            .chain(|input| {
+                move || {
+                    yield input * 2;
+                    return input;
+                }
+            })
+            .unwrap();
+
+        let chain_twice = chain_once
+            .chain(|mut input| {
+                move || {
+                    yield input * 10;
+                    input *= 10;
+                    input - 1
+                }
+            })
+            .unwrap();
 
         let mut iter = chain_twice.iter_all();
 
@@ -96,15 +100,18 @@ mod tests {
         });
 
         {
-            let mut iter = generator.borrow_mut(|gen| {
-                move || {
-                    let sum = gen.iter_all().take(3).sum();
-                    for i in 0..sum {
-                        yield i;
+            let mut iter = generator
+                .borrow_mut(|gen| {
+                    move || {
+                        let sum = gen.iter_all().take(3).sum();
+                        for i in 0..sum {
+                            yield i;
+                        }
+                        return 0;
                     }
-                    return 0;
-                }
-            }).unwrap().iter_all();
+                })
+                .unwrap()
+                .iter_all();
 
             assert_eq!(iter.next(), Some(0));
             assert_eq!(iter.next(), Some(1));

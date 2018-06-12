@@ -10,10 +10,10 @@ macro_rules! return_from_yield {
         unsafe {
             match $g.resume() {
                 GeneratorState::Yielded(_) => return Some(State::Yield(())),
-                GeneratorState::Complete(ret) => ret
+                GeneratorState::Complete(ret) => ret,
             }
         }
-    }
+    };
 }
 
 /// This macro is used for the implementation of the `Senerator` trait.
@@ -25,10 +25,10 @@ macro_rules! return_yielded {
         unsafe {
             match $g.resume() {
                 GeneratorState::Yielded(y) => return Some(State::Yield(y)),
-                GeneratorState::Complete(ret) => ret
+                GeneratorState::Complete(ret) => ret,
             }
         }
-    }
+    };
 }
 
 /// Indicates the State of Generator.
@@ -36,16 +36,15 @@ macro_rules! return_yielded {
 #[derive(Debug)]
 pub enum State<Y, R> {
     Yield(Y),
-    Return(R)
+    Return(R),
 }
 
-impl <Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
-
+impl<Y, R: Into<Y>> Into<Option<Y>> for State<Y, R> {
     #[inline]
     fn into(self) -> Option<Y> {
         match self {
             State::Yield(value) => Some(value),
-            State::Return(value) => Some(value.into())
+            State::Return(value) => Some(value.into()),
         }
     }
 }
@@ -81,7 +80,6 @@ pub trait Senerator: Futerator {
 pub struct Callable<G>(Option<G>);
 
 impl<G> Callable<G> {
-
     #[inline]
     pub fn new(g: G) -> Self {
         Callable(Some(g))
@@ -91,7 +89,10 @@ impl<G> Callable<G> {
     /// The newly created Callable has a generator under the hood that first yields all the items of the old generator, once that returns it passes the returned value into the closure,
     /// so a new generator is pulled out of the closure, and that generator will resume from there on.
     /// Returns None if the underlying Generator already has been exhausted.
-    pub fn chain<O>(self, g: impl FnOnce(G::Return) -> O) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
+    pub fn chain<O>(
+        self,
+        g: impl FnOnce(G::Return) -> O,
+    ) -> Option<Callable<impl Generator<Yield = G::Yield, Return = G::Return>>>
     where
         G: Generator,
         O: Generator<Yield = G::Yield, Return = G::Return>,
@@ -103,14 +104,17 @@ impl<G> Callable<G> {
 
             let mut provided_gen = g(ret);
 
-            return yield_from!(provided_gen)
+            return yield_from!(provided_gen);
         }))
     }
 
     /// Takes out the underlying Generator, and calls the closure with it. The closure should return a new Generator.
     /// Returns None if the underlying Generator already has been exhausted.
     #[inline]
-    pub fn move_into<O>(self, func: impl FnOnce(G) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    pub fn move_into<O>(
+        self,
+        func: impl FnOnce(G) -> O,
+    ) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
         O: Generator,
@@ -122,13 +126,16 @@ impl<G> Callable<G> {
     /// Calls the closure with self. Because `Self` can be turned into an Iterator, it makes iterating over the underlying Generator of self easy to do in the new generator.
     /// Returns None if the underlying Generator already has been exhausted
     #[inline]
-    pub fn make_new<O>(self, func: impl FnOnce(Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    pub fn make_new<O>(
+        self,
+        func: impl FnOnce(Self) -> O,
+    ) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
-        O: Generator
+        O: Generator,
     {
         if self.0.is_some() {
-            return Some(Callable::new(func(self)))
+            return Some(Callable::new(func(self)));
         }
         None
     }
@@ -136,13 +143,16 @@ impl<G> Callable<G> {
     /// Calls the closure, borrowing `Self`. This still allows Iteration inside of the new Generator, except that `Self` is not moved into the closure.
     /// Returns None if the underlying Generator already has been exhausted
     #[inline]
-    pub fn borrow_mut<'a, 's: 'a, O>(&'s mut self, func: impl FnOnce(&'a mut Self) -> O) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
+    pub fn borrow_mut<'a, 's: 'a, O>(
+        &'s mut self,
+        func: impl FnOnce(&'a mut Self) -> O,
+    ) -> Option<Callable<impl Generator<Yield = O::Yield, Return = O::Return>>>
     where
         G: Generator,
-        O: Generator
+        O: Generator,
     {
         if self.0.is_some() {
-            return Some(Callable::new(func(self)))
+            return Some(Callable::new(func(self)));
         }
         None
     }
@@ -169,9 +179,9 @@ impl<G> Callable<G> {
     }
 }
 
-impl <G> Futerator for Callable<G>
+impl<G> Futerator for Callable<G>
 where
-    G: Generator
+    G: Generator,
 {
     type Return = G::Return;
 
@@ -183,9 +193,9 @@ where
     }
 }
 
-impl <'a, G> Futerator for &'a mut G
+impl<'a, G> Futerator for &'a mut G
 where
-    G: Futerator
+    G: Futerator,
 {
     type Return = G::Return;
 
@@ -195,9 +205,9 @@ where
     }
 }
 
-impl <G> Senerator for Callable<G>
+impl<G> Senerator for Callable<G>
 where
-    G: Generator
+    G: Generator,
 {
     type Yield = G::Yield;
 
@@ -209,9 +219,9 @@ where
     }
 }
 
-impl <'a, G> Senerator for &'a mut G
+impl<'a, G> Senerator for &'a mut G
 where
-    G: Senerator
+    G: Senerator,
 {
     type Yield = G::Yield;
 
@@ -226,14 +236,14 @@ pub mod ext_futures {
 
     extern crate futures;
 
-    use self::futures::{Future, Stream};
     use self::futures::task::Context;
     use self::futures::{Async, Poll};
+    use self::futures::{Future, Stream};
 
     use super::{Callable, Futerator, Senerator, State};
     use std::ops::Generator;
 
-    impl <G: Generator> Future for Callable<G> {
+    impl<G: Generator> Future for Callable<G> {
         type Item = G::Return;
         type Error = ();
 
@@ -241,12 +251,12 @@ pub mod ext_futures {
             match self.resume() {
                 Some(State::Yield(_)) => Ok(Async::Pending),
                 Some(State::Return(r)) => Ok(Async::Ready(r)),
-                None => Err(())
+                None => Err(()),
             }
         }
     }
 
-    impl <G: Generator>Stream for Callable<G> {
+    impl<G: Generator> Stream for Callable<G> {
         type Item = G::Yield;
         type Error = ();
 

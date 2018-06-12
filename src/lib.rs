@@ -1,4 +1,3 @@
-
 //#![feature(extern_prelude)]
 #![feature(generator_trait, generators)]
 //! This crate is build for easy convertion from generators to iterators,
@@ -7,8 +6,7 @@
 /// A macro that first yields all items in the provided Generator, gives the ability to bind the return value of the Generator to a variable.
 #[macro_export]
 macro_rules! yield_from {
-
-    ($g:expr) => (
+    ($g:expr) => {
         unsafe {
             loop {
                 match $g.resume() {
@@ -17,7 +15,7 @@ macro_rules! yield_from {
                 }
             }
         }
-    );
+    };
 }
 
 #[cfg(feature = "futuresext")]
@@ -25,7 +23,6 @@ extern crate futures;
 
 pub mod gen;
 pub mod iter;
-
 
 #[cfg(test)]
 mod tests;
